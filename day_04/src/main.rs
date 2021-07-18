@@ -1,26 +1,11 @@
 use std::collections::HashMap;
+use itertools::Itertools;
 
-fn parse_passport(s: &str) -> HashMap<&str, &str> {
-    let mut passport = HashMap::new();
-
-    for prop in s.split_whitespace() {
-        let mut p = prop.split(':');
-
-        passport.insert(p.next().unwrap(), p.next().unwrap());
-    }
-
-    passport
-}
-
-
-fn valid_passport(pass: &HashMap<&str, &str>) -> bool {
-    let required = vec!["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"];
-    required.iter().all(|r| pass.contains_key(r))
-}
+const REQ_FIELDS: [&'static str; 7] = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"];
+const EYE_COLORS: [&'static str; 7] = ["amb", "blu", "brn", "gry", "grn", "hzl", "oth"];
 
 fn valid_passport_part_2(pass: &HashMap<&str, &str>) -> bool {
-    let required = vec!["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"];
-    if !required.iter().all(|r| pass.contains_key(r)) {
+    if !REQ_FIELDS.iter().all(|r| pass.contains_key(r)) {
         return false
     }
 
@@ -107,15 +92,53 @@ fn valid_passport_part_2(pass: &HashMap<&str, &str>) -> bool {
     return true
 }
 
+fn validate_field(field: &str, value: &str) -> bool {
+    match field {
+        "byr" => (1920..=2002).contains(&value.parse::<i32>().unwrap()),
+        "iyr" => (2010..=2020).contains(&value.parse::<i32>().unwrap()),
+        "eyr" => (2020..=2030).contains(&value.parse::<i32>().unwrap()),
+        "hgt" => {
+            if value.ends_with("cm") && value.len() == 5 {
+                (150..=193).contains(&value[0..3].parse::<i32>().unwrap())
+            } else if value.ends_with("in") && value.len() == 4 {
+                (59..=76).contains(&value[0..2].parse::<i32>().unwrap())
+            } else {
+                false
+            }
+        }
+        "hcl" => value.len() == 7,
+        "ecl" => EYE_COLORS.iter().any(|v| v == &value),
+        "pid" => value.len() == 9,
+        "cid" => true,
+        _ => panic!("unknown field")
+    }
+}
+
 fn main() {
-    let passports: Vec<HashMap<&str, &str>> = include_str!("../input.txt").split("\n\n").map(parse_passport).collect();
+    let passports: Vec<HashMap<&str, &str>> = include_str!("../input.txt")
+        .split("\n\n")
+        .map(|fields| fields
+            .split_whitespace()
+            .map(|f| f.splitn(2,':').collect_tuple().unwrap())
+            .collect::<HashMap<&str, &str>>())
+        .collect();
 
-    let valid: Vec<HashMap<&str, &str>> = passports.clone().into_iter().filter(valid_passport).collect();
+    println!(
+        "part 1: {:?}", 
+        passports
+            .clone()
+            .into_iter()
+            .filter(|pass| REQ_FIELDS.iter().all(|r| pass.contains_key(r)))
+            .count()
+    ); // 204
 
-    println!("part 1: {:?}", valid.len()); // 204
 
-    let valid: Vec<HashMap<&str, &str>> = passports.clone().into_iter().filter(valid_passport_part_2).collect();
-
-    println!("part 2: {:?}", valid.len()); // 179
+    println!(
+        "part 2: {:?}", 
+        passports.clone().into_iter()
+            .filter(|pass| REQ_FIELDS.iter().all(|r| pass.contains_key(r)))
+            .filter(|pass| pass.iter().all(|(f, v)| validate_field(f, v)))
+            .count()
+    ); // 179
 
 }
