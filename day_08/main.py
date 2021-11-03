@@ -29,6 +29,7 @@ def run(instructions):
 		else:
 			raise Error('operation', op, 'unknown')
 
+
 	return return_code, accumulator
 
 
